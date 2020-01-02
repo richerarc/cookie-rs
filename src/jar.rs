@@ -1,12 +1,16 @@
+use std::collections::hash_map::RandomState;
+use std::collections::hash_set::Difference;
+use std::collections::hash_set::Iter as HashSetIter;
 use std::collections::HashSet;
+use std::iter::Chain;
 use std::mem::replace;
 
 use time::{self, Duration};
 
-#[cfg(feature = "secure")]
-use secure::{PrivateJar, SignedJar, Key};
+use ::{Cookie, ParseError};
 use delta::DeltaCookie;
-use Cookie;
+#[cfg(feature = "secure")]
+use secure::{Key, PrivateJar, SignedJar};
 
 /// A collection of cookies that tracks its modifications.
 ///
@@ -98,6 +102,29 @@ impl CookieJar {
     /// ```
     pub fn new() -> CookieJar {
         CookieJar::default()
+    }
+
+    /// Parses a cookie jar from a semicolon delimited list of `name=value` pairs commonly
+    /// found in the HTTP Cookie header.
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// use cookie::CookieJar;
+    /// let jar = CookieJar::from_header_str("yummy_cookie=choco; tasty_cookie=strawberry").unwrap();
+    /// assert!(jar.get("yummy_cookie").is_some());
+    /// assert_eq!(jar.get("tasty_cookie").map(|c| c.value()), Some("strawberry"));
+    ///  ```
+    pub fn from_header_str(s: &str) -> Result<CookieJar, ParseError> {
+        let mut jar = CookieJar::new();
+
+        s.trim_start_matches("Cookie: ").split(';').try_for_each(|s| -> Result<_, ParseError> {
+            jar.add(Cookie::parse(s.trim().to_owned())?);
+
+            Ok(())
+        })?;
+
+        Ok(jar)
     }
 
     /// Returns a reference to the `Cookie` inside this jar with the name
@@ -205,7 +232,7 @@ impl CookieJar {
     /// let delta: Vec<_> = jar.delta().collect();
     /// assert_eq!(delta.len(), 1);
     /// assert_eq!(delta[0].name(), "name");
-    /// assert_eq!(delta[0].max_age(), Some(Duration::seconds(0)));
+    /// assert_eq!(delta[0].max_age(), Some(0));
     /// # }
     /// ```
     ///
@@ -224,7 +251,7 @@ impl CookieJar {
     pub fn remove(&mut self, mut cookie: Cookie<'static>) {
         if self.original_cookies.contains(cookie.name()) {
             cookie.set_value("");
-            cookie.set_max_age(Duration::seconds(0));
+            cookie.set_max_age(0);
             cookie.set_expires(time::now() - Duration::days(365));
             self.delta_cookies.replace(DeltaCookie::removed(cookie));
         } else {
@@ -274,9 +301,12 @@ impl CookieJar {
     }
 
     /// Removes all cookies from this cookie jar.
-    #[deprecated(since = "0.7.0", note = "calling this method may not remove \
-                 all cookies since the path and domain are not specified; use \
-                 `remove` instead")]
+    #[deprecated(
+    since = "0.7.0",
+    note = "calling this method may not remove \
+                all cookies since the path and domain are not specified; use \
+                `remove` instead"
+    )]
     pub fn clear(&mut self) {
         self.delta_cookies.clear();
         for delta in replace(&mut self.original_cookies, HashSet::new()) {
@@ -310,7 +340,9 @@ impl CookieJar {
     /// assert_eq!(jar.delta().count(), 3);
     /// ```
     pub fn delta(&self) -> Delta {
-        Delta { iter: self.delta_cookies.iter() }
+        Delta {
+            iter: self.delta_cookies.iter(),
+        }
     }
 
     /// Returns an iterator over all of the cookies present in this jar.
@@ -345,7 +377,9 @@ impl CookieJar {
     /// ```
     pub fn iter(&self) -> Iter {
         Iter {
-            delta_cookies: self.delta_cookies.iter()
+            delta_cookies: self
+                .delta_cookies
+                .iter()
                 .chain(self.original_cookies.difference(&self.delta_cookies)),
         }
     }
@@ -427,8 +461,6 @@ impl CookieJar {
     }
 }
 
-use std::collections::hash_set::Iter as HashSetIter;
-
 /// Iterator over the changes to a cookie jar.
 pub struct Delta<'a> {
     iter: HashSetIter<'a, DeltaCookie>,
@@ -441,10 +473,6 @@ impl<'a> Iterator for Delta<'a> {
         self.iter.next().map(|c| &c.cookie)
     }
 }
-
-use std::collections::hash_set::Difference;
-use std::collections::hash_map::RandomState;
-use std::iter::Chain;
 
 /// Iterator over all of the cookies in a jar.
 pub struct Iter<'a> {
@@ -467,8 +495,9 @@ impl<'a> Iterator for Iter<'a> {
 
 #[cfg(test)]
 mod test {
-    use super::CookieJar;
     use Cookie;
+
+    use super::CookieJar;
 
     #[test]
     #[allow(deprecated)]
@@ -551,9 +580,7 @@ mod test {
 
         assert_eq!(c.delta().count(), 4);
 
-        let names: HashMap<_, _> = c.delta()
-            .map(|c| (c.name(), c.max_age()))
-            .collect();
+        let names: HashMap<_, _> = c.delta().map(|c| (c.name(), c.max_age())).collect();
 
         assert!(names.get("test2").unwrap().is_none());
         assert!(names.get("test3").unwrap().is_none());
