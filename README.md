@@ -1,6 +1,6 @@
-# cookie-rs
+# saphir-cookie
 
-A library for parsing HTTP cookies and managing cookie jars.
+A library for parsing HTTP cookies and managing cookie jars. This is basicly the same project as its upstream, but this one is maintained and recent PR from SergioBenitez/cookie-rs have been applied 
 
 **Forked from [SergioBenitez/cookie-rs](https://github.com/SergioBenitez/cookie-rs)**
 
@@ -10,10 +10,10 @@ Add the following to your `Cargo.toml`:
 
 ```toml
 [dependencies]
-cookie = {git = "https://github.com/richerarc/cookie-rs"}
+saphir-cookie = 0.13
 ```
 
-See the [documentation](http://docs.rs/cookie) for detailed usage information.
+See the [documentation](http://docs.rs/saphir-cookie) for detailed usage information.
 
 # License
 
@@ -29,5 +29,5 @@ at your option.
 ### Contribution
 
 Unless you explicitly state otherwise, any contribution intentionally submitted
-for inclusion in `cookie-rs` by you, as defined in the Apache-2.0 license, shall
+for inclusion in `saphir-cookie` by you, as defined in the Apache-2.0 license, shall
 be dual licensed as above, without any additional terms or conditions.
