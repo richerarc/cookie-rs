@@ -493,6 +493,19 @@ impl<'a> Iterator for Iter<'a> {
     }
 }
 
+impl<I> From<I> for CookieJar
+    where
+        I: IntoIterator<Item = Cookie<'static>>,
+{
+    fn from(it: I) -> Self {
+        let mut jar = CookieJar::new();
+        for b in it.into_iter() {
+            jar.add(b)
+        }
+        jar
+    }
+}
+
 #[cfg(test)]
 mod test {
     use Cookie;
