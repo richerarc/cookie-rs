@@ -61,6 +61,7 @@
 #![doc(html_root_url = "https://docs.rs/cookie/0.12")]
 #![deny(missing_docs)]
 
+extern crate chrono;
 #[cfg(feature = "percent-encode")]
 extern crate percent_encoding;
 extern crate time;
@@ -1059,6 +1060,7 @@ impl<'a, 'b> PartialEq<Cookie<'b>> for Cookie<'a> {
 mod tests {
     use time::strptime;
 
+    use chrono::{DateTime, TimeZone, Utc};
     use {Cookie, SameSite};
 
     #[test]
@@ -1069,9 +1071,7 @@ mod tests {
         let cookie = Cookie::build("foo", "bar").http_only(true).finish();
         assert_eq!(&cookie.to_string(), "foo=bar; HttpOnly");
 
-        let cookie = Cookie::build("foo", "bar")
-            .max_age(10)
-            .finish();
+        let cookie = Cookie::build("foo", "bar").max_age(10).finish();
         assert_eq!(&cookie.to_string(), "foo=bar; Max-Age=10");
 
         let cookie = Cookie::build("foo", "bar").secure(true).finish();
@@ -1087,7 +1087,19 @@ mod tests {
 
         let time_str = "Wed, 21 Oct 2015 07:28:00 GMT";
         let expires = strptime(time_str, "%a, %d %b %Y %H:%M:%S %Z").unwrap();
+        #[allow(deprecated)]
         let cookie = Cookie::build("foo", "bar").expires(expires).finish();
+        assert_eq!(
+            &cookie.to_string(),
+            "foo=bar; Expires=Wed, 21 Oct 2015 07:28:00 GMT"
+        );
+
+        let expires: DateTime<Utc> =
+            chrono::DateTime::from(Utc.ymd(2015, 10, 21).and_hms_nano(7, 28, 00, 0));
+        #[allow(deprecated)]
+        let cookie = Cookie::build("foo", "bar")
+            .expires_datetime(expires)
+            .finish();
         assert_eq!(
             &cookie.to_string(),
             "foo=bar; Expires=Wed, 21 Oct 2015 07:28:00 GMT"
