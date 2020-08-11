@@ -2,6 +2,7 @@ use std::borrow::Cow;
 
 use time::Tm;
 
+use chrono::{DateTime, TimeZone};
 use {Cookie, SameSite};
 
 /// Structure that follows the builder pattern for building `Cookie` structs.
@@ -61,28 +62,64 @@ impl<'c> CookieBuilder<'c> {
         }
     }
 
-    /// Sets the `expires` field in the cookie being built.
+    #[deprecated(
+        since = "0.13.1",
+        note = "Use the expire_ts() or expire_datetime() functions instead. It makes the interface independent from time crate. "
+    )]
+    pub fn expires(mut self, when: Tm) -> Self {
+        self.cookie.set_expires(when);
+        self
+    }
+
+    /// Sets the `expires` field in the cookie being built with a timestamp.
     ///
     /// # Example
     ///
     /// ```rust
     /// # extern crate cookie;
-    /// extern crate time;
+    /// extern crate chrono;
     ///
     /// use cookie::Cookie;
     ///
     /// # fn main() {
     /// let c = Cookie::build("foo", "bar")
-    ///     .expires(time::now())
+    ///     .expires_ts(chrono::Local::now().timestamp())
     ///     .finish();
     ///
     /// assert!(c.expires().is_some());
     /// # }
     /// ```
     #[inline]
-    pub fn expires(mut self, when: Tm) -> Self {
-        self.cookie.set_expires(when);
+    pub fn expires_ts(mut self, when_in_sec: i64) -> Self {
+        let tm: time::Tm = time::at_utc(time::Timespec::new(when_in_sec, 0));
+        self.cookie.set_expires(tm);
         self
+    }
+
+    /// Sets the `expires` field in the cookie being built with a Utc DateTime.
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// # extern crate cookie;
+    ///
+    /// extern crate chrono;
+    /// use cookie::Cookie;
+    ///
+    /// # fn main() {
+    /// let c = Cookie::build("foo", "bar")
+    ///     .expires_datetime(chrono::Utc::now())
+    ///     .finish();
+    ///
+    /// assert!(c.expires().is_some());
+    /// # }
+    /// ```
+    #[inline]
+    pub fn expires_datetime<T>(self, when: DateTime<T>) -> Self
+    where
+        T: TimeZone,
+    {
+        self.expires_ts(when.timestamp())
     }
 
     /// Sets the `max_age` field in the cookie being built.
