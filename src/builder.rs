@@ -62,6 +62,7 @@ impl<'c> CookieBuilder<'c> {
         }
     }
 
+    /// This function is deprecated, please use the expire_ts() or expire_datetime() functions instead.
     #[deprecated(
         since = "0.13.1",
         note = "Use the expire_ts() or expire_datetime() functions instead. It makes the interface independent from time crate. "
